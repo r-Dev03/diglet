@@ -1,5 +1,10 @@
-use leptos::prelude::*;
+mod model;  
 
 fn main() {
-    leptos::mount::mount_to_body(|| view! { <p>"Hello, world!"</p> })
+    mount_to_body(App);
 }
+
+#[component]
+fn App() -> impl IntoView {
+
+}}
