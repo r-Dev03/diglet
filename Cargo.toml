@@ -8,4 +8,5 @@ edition = "2024"
 [dependencies]
 candle-core = "0.9.2"
 candle-nn = "0.9.2"
+getrandom = { version = "0.3", features = ["wasm_js"] }
 leptos = { version = "0.8.3", features = ["csr"] }
