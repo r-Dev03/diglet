@@ -22,12 +22,10 @@ pub fn load_weights(path: &str) -> Result<ModelWeights, Box<dyn Error>> {
   let b2 = tensors.get("b2");
 
   let weights = ModelWeights {
-
     w1: w1,
     b1: b1,
     w2: w2,
     b2: b2,
-
   };
 
 
