@@ -1,11 +1,6 @@
-use std::io;
-use std::fs;
 use::std::error::Error;
 use::std::collections;
-use candle_nn;
-use candle_core::Device;
-use::candle_core::Tensor;
-use candle_core::safetensors;
+use candle_core::{Device, Tensor, safetensors};
 
 pub struct ModelWeights {
   pub w1: Tensor,
