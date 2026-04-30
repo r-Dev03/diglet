@@ -31,14 +31,3 @@ pub fn model_forward(weights: &ModelWeights, inputs: &Tensor) -> Result<Tensor, 
 
   Ok(output)
 }
-
-
-
-// reference
-// def model_forward(weights: ModelWeights, inputs: Array) -> Array:
-//     hidden1 = jax.nn.relu(jnp.matmul(inputs, weights.w1) + weights.b1)
-//     hidden2 = jnp.matmul(hidden1, weights.w2) + weights.b2
-//     # return hidden2
-//     return jax.nn.softmax(hidden2)
-//
-
