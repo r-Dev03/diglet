@@ -1,5 +1,6 @@
 mod model;
-use leptos::{prelude::*, svg::view};
+use leptos::html::Canvas;
+use leptos::{prelude::*, svg::view, html};
 use candle_core::{Device, Tensor, DType, Result, display};
 use leptos::logging::log;
 
@@ -14,16 +15,31 @@ use leptos::prelude::*;
 
 #[component]
 fn App() -> impl IntoView {
-    view! {
-        <canvas 
-            on:mousedown=move |ev| log!("Down at: {}, {}", ev.x(), ev.y())
-            on:mouseup=move |ev| log!("Up at: {}, {}", ev.x(), ev.y())
-            on:mousemove=move |ev| log!("Move: {}, {}", ev.x(), ev.y())
-            width="280"
-            height="280"
-            style="border: 1px solid black;"
-        />
+  let canvas_ref: NodeRef<Canvas> = NodeRef::new();
+
+  create_effect(move |_| {
+    if let Some(canvas) = canvas_ref.get() {
+      // Get context
+      // Store it in ???
     }
+  });
+
+  view! {
+    <canvas 
+    node_ref=canvas_ref
+    on:mousemove=move |ev| {
+    // Retrieve context from ???
+    // Draw with it
+
+    }
+
+    // on:mousedown=move |ev| log!("Down at: {}, {}", ev.x(), ev.y()) on:mouseup=move |ev| log!("Up at: {}, {}", ev.x(), ev.y())
+    // on:mousemove=move |ev| log!("Move: {}, {}", ev.x(), ev.y())
+    width="280"
+    height="280"
+      style="border: 1px solid black;"
+    />
+  }
 }
 
 fn main() {
