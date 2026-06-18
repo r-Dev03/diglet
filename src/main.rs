@@ -1,33 +1,55 @@
 mod model;
+use js_sys::wasm_bindgen::JsCast;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use leptos::html::Canvas;
 use leptos::{prelude::*, svg::view, html};
 use candle_core::{Device, Tensor, DType, Result, display};
 use leptos::logging::log;
-
 use leptos::prelude::*;
-
-// Composing different components together is how we build
-// user interfaces. Here, we'll define a reusable <ProgressBar/>.
-// You'll see how doc comments can be used to document components
-// and their properties.
 
 
 
 #[component]
 fn App() -> impl IntoView {
   let canvas_ref: NodeRef<Canvas> = NodeRef::new();
+  let (ctx, set_ctx) = signal(None);
 
-  create_effect(move |_| {
+  Effect::new(move |_| {
+    // Get context
     if let Some(canvas) = canvas_ref.get() {
-      // Get context
-      // Store it in ???
+    // Store it 
+      set_ctx.set(Some(canvas.get_context("2d")));
     }
   });
+
 
   view! {
     <canvas 
     node_ref=canvas_ref
     on:mousemove=move |ev| {
+    if let Some(context) = ctx.get() {
+    let context = context
+        .unwrap()
+        .unwrap()
+        .dyn_into::<CanvasRenderingContext2d>()
+        .unwrap();
+
+    // use context
+}
+
+    // Wall
+    // ctx.strokeRect(75, 140, 150, 110);
+
+    // Door
+    // ctx.fillRect(130, 190, 40, 60);
+
+    // Roof
+    // ctx.beginPath();
+    // ctx.moveTo(50, 140);
+    // ctx.lineTo(150, 60);
+    // ctx.lineTo(250, 140);
+    // ctx.closePath();
+    // ctx.stroke();
     // Retrieve context from ???
     // Draw with it
 

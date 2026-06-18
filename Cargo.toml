@@ -9,4 +9,12 @@ edition = "2024"
 candle-core = "0.9.2"
 candle-nn = "0.9.2"
 getrandom = { version = "0.3", features = ["wasm_js"] }
+js-sys = "0.3.102"
 leptos = { version = "0.8.3", features = ["csr"] }
+web-sys = { version = "0.3.102", features = [
+  "Document",
+  "Element",
+  "HtmlCanvasElement",
+  "CanvasRenderingContext2d",
+  "Window"
+] }
