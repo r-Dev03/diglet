@@ -15,50 +15,38 @@ fn App() -> impl IntoView {
   let (ctx, set_ctx) = signal(None);
 
   Effect::new(move |_| {
-    // Get context
     if let Some(canvas) = canvas_ref.get() {
-    // Store it 
-      set_ctx.set(Some(canvas.get_context("2d")));
+      if let Ok(Some(ctx)) = canvas.get_context("2d") {
+        if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
+          set_ctx.set(Some(ctx));  
+        }
+      }
     }
   });
 
-
   view! {
-    <canvas 
-    node_ref=canvas_ref
-    on:mousemove=move |ev| {
+  <canvas 
+  node_ref=canvas_ref
+  on:mousemove=move |ev| {
     if let Some(context) = ctx.get() {
-    let context = context
-        .unwrap()
-        .unwrap()
-        .dyn_into::<CanvasRenderingContext2d>()
-        .unwrap();
+      context.stroke_rect(75.0, 140.0, 150.0, 110.0);
 
-    // use context
-}
+      context.fill_rect(130.0, 190.0, 40.0, 60.0);
 
-    // Wall
-    // ctx.strokeRect(75, 140, 150, 110);
-
-    // Door
-    // ctx.fillRect(130, 190, 40, 60);
-
-    // Roof
-    // ctx.beginPath();
-    // ctx.moveTo(50, 140);
-    // ctx.lineTo(150, 60);
-    // ctx.lineTo(250, 140);
-    // ctx.closePath();
-    // ctx.stroke();
-    // Retrieve context from ???
-    // Draw with it
+      context.begin_path();
+      context.move_to(50.0, 140.0);
+      context.line_to(150.0, 60.0);
+      context.line_to(250.0, 140.0);
+      context.close_path();
+      context.stroke();
 
     }
 
+  }
     // on:mousedown=move |ev| log!("Down at: {}, {}", ev.x(), ev.y()) on:mouseup=move |ev| log!("Up at: {}, {}", ev.x(), ev.y())
     // on:mousemove=move |ev| log!("Move: {}, {}", ev.x(), ev.y())
     width="280"
-    height="280"
+      height="280"
       style="border: 1px solid black;"
     />
   }
