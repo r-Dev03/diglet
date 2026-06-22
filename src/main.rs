@@ -61,10 +61,22 @@ fn App() -> impl IntoView {
 
   }
 
-    width="280"
-      height="280"
+    width="500"
+      height="500"
       style="border: 1px solid black;"
+      class="container"
     />
+      <button
+      on:click=move |ev| {
+        if let Some(context) = ctx.get() {
+          context.clear_rect(0.0, 0.0, 500.0, 500.0);
+          set_coordinates.set((0, 0));
+        } 
+      }
+      >
+      <span class="button_top"> Clear Canvas </span>
+    </button>
+
   }
 }
 
@@ -85,9 +97,7 @@ fn draw() {
         pixels[row * 28 + 14] = 1.0;
       }
 
-
       let input = Tensor::from_slice(&pixels, &[1, 784], &Device::Cpu).unwrap();
-
       match model::model_forward(&weights, &input) {
         Ok(output) => {
           println!("✓ Inference worked! {:?}", output);
