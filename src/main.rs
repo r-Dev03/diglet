@@ -13,6 +13,8 @@ use leptos::prelude::*;
 fn App() -> impl IntoView {
   let canvas_ref: NodeRef<Canvas> = NodeRef::new();
   let (ctx, set_ctx) = signal(None);
+  let (is_drawing, set_is_drawing) = signal(false);
+  let (coordinates, set_coordinates) = signal((0, 0));
 
   Effect::new(move |_| {
     if let Some(canvas) = canvas_ref.get() {
@@ -27,24 +29,38 @@ fn App() -> impl IntoView {
   view! {
   <canvas 
   node_ref=canvas_ref
+  on:mousedown=move |ev| { 
+    set_coordinates.set((ev.x(), ev.y()));
+    set_is_drawing.set(true); 
+
+  }
+
+  on:mouseup=move |ev| { 
+    set_is_drawing.set(false); 
+  }
+
   on:mousemove=move |ev| {
     if let Some(context) = ctx.get() {
-      context.stroke_rect(75.0, 140.0, 150.0, 110.0);
 
-      context.fill_rect(130.0, 190.0, 40.0, 60.0);
+      if is_drawing.get() == true {
+        context.begin_path();
 
-      context.begin_path();
-      context.move_to(50.0, 140.0);
-      context.line_to(150.0, 60.0);
-      context.line_to(250.0, 140.0);
-      context.close_path();
-      context.stroke();
+        // Set styles
+        context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
+        context.set_line_width(4.0);
 
+        // Move to starting point and draw a line
+        context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
+        context.line_to(ev.x() as f64, ev.y() as f64);
+
+        context.stroke();
+      }
+
+      set_coordinates.set((ev.x(), ev.y()));
     }
 
   }
-    // on:mousedown=move |ev| log!("Down at: {}, {}", ev.x(), ev.y()) on:mouseup=move |ev| log!("Up at: {}, {}", ev.x(), ev.y())
-    // on:mousemove=move |ev| log!("Move: {}, {}", ev.x(), ev.y())
+
     width="280"
       height="280"
       style="border: 1px solid black;"

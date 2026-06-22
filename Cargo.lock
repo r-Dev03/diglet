@@ -401,6 +401,7 @@ dependencies = [
  "getrandom 0.3.4",
  "js-sys",
  "leptos",
+ "wasm-bindgen",
  "web-sys",
 ]
 
