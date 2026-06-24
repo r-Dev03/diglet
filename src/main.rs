@@ -37,6 +37,32 @@ fn App() -> impl IntoView {
 
   on:mouseup=move |ev| { 
     set_is_drawing.set(false); 
+    if let Some(context) = ctx.get() {
+      let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
+      let mut greyscale: Vec<u8> = Vec::new();
+      let mut image_data = &image.unwrap().data();
+
+      let (chunks, _rest) = image_data.as_chunks::<4>();
+
+      for &[r, g, b, a] in chunks {
+        let grey = (f64::from(r) * 0.299 + f64::from(g) * 0.587 + f64::from(b) * 0.114) as u8;
+        greyscale.push(grey);
+        greyscale.push(grey);
+        greyscale.push(grey);
+        greyscale.push(a);
+      }
+      log!("{:?}", greyscale);
+
+      // for i in image_data.chunks(4) {
+      //   let grey = i[0] as f64 * 0.299 + i[1] as f64 * 0.587 + i[2] as f64 * 0.114;
+      //   greyscale.push(grey);
+      // }
+      // for (i, v) in image_data.iter().enumerate().step_by(4) {
+        // Gray=(R×0.299)+(G×0.587)+(B×0.114)
+        // let grey = image_data[i] as f64 * 0.299 + image_data[i+1] as f64 * 0.587 + image_data[i+2] as f64 * 0.114;
+        // greyscale.push(grey);
+      // }
+    }
   }
 
   on:mousemove=move |ev| {
