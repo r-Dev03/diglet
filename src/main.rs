@@ -20,6 +20,8 @@ fn App() -> impl IntoView {
     if let Some(canvas) = canvas_ref.get() {
       if let Ok(Some(ctx)) = canvas.get_context("2d") {
         if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
+          ctx.set_fill_style_str("white");
+          ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
           set_ctx.set(Some(ctx));  
         }
       }
@@ -39,20 +41,29 @@ fn App() -> impl IntoView {
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
       let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
-      let mut greyscale: Vec<u8> = Vec::new();
+      let mut greyscale: Vec<f32> = Vec::new();
       let mut image_data = &image.unwrap().data();
 
       let (chunks, _rest) = image_data.as_chunks::<4>();
+      for (i, &[r, g, b, a]) in chunks.iter().take(10).enumerate() {
+        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+        log!("pixel {} => r={}, g={}, b={}, a={}, grey={}", i, r, g, b, a, grey);
+}
 
-      for &[r, g, b, a] in chunks {
-        let grey = (f64::from(r) * 0.299 + f64::from(g) * 0.587 + f64::from(b) * 0.114) as u8;
-        greyscale.push(grey);
-        greyscale.push(grey);
-        greyscale.push(grey);
-        greyscale.push(a);
-      }
-      log!("{:?}", greyscale);
-
+      // let (chunks, _rest) = image_data.as_chunks::<4>();
+      // log!("{:?}", chunks);
+      //
+      // for &[r, g, b, a] in chunks {
+      //   let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+      //   let normalized = (grey / 255.0);
+      //   greyscale.push(normalized);
+      // }
+      // log!("{:?}", greyscale);
+      //
+      //
+      //
+      //
+      //
       // for i in image_data.chunks(4) {
       //   let grey = i[0] as f64 * 0.299 + i[1] as f64 * 0.587 + i[2] as f64 * 0.114;
       //   greyscale.push(grey);
@@ -71,11 +82,9 @@ fn App() -> impl IntoView {
       if is_drawing.get() == true {
         context.begin_path();
 
-        // Set styles
         context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
         context.set_line_width(4.0);
 
-        // Move to starting point and draw a line
         context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
         context.line_to(ev.x() as f64, ev.y() as f64);
 
