@@ -23,8 +23,8 @@ fn App() -> impl IntoView {
       if let Ok(Some(ctx)) = canvas.get_context("2d") {
         if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
           set_canvas_el.set(Some(canvas_el));
-          ctx.set_fill_style_str("white");
-          ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+          // ctx.set_fill_style_str("white");
+          // ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
           set_ctx.set(Some(ctx));  
         }
       }
@@ -90,20 +90,7 @@ fn App() -> impl IntoView {
           greyscale.push(normalized);
         }
       }
-      //
-      //
-      //
-      //
-      //
-      // for i in image_data.chunks(4) {
-      //   let grey = i[0] as f64 * 0.299 + i[1] as f64 * 0.587 + i[2] as f64 * 0.114;
-      //   greyscale.push(grey);
-      // }
-      // for (i, v) in image_data.iter().enumerate().step_by(4) {
-      // Gray=(R×0.299)+(G×0.587)+(B×0.114)
-      // let grey = image_data[i] as f64 * 0.299 + image_data[i+1] as f64 * 0.587 + image_data[i+2] as f64 * 0.114;
-      // greyscale.push(grey);
-      // }
+
     }
   }
 
