@@ -20,54 +20,53 @@ fn App() -> impl IntoView {
   Effect::new(move |_| {
     if let Some(canvas) = canvas_ref.get() {
       if let Ok(canvas_el) = canvas.clone().dyn_into::<web_sys::HtmlElement>() {
-      if let Ok(Some(ctx)) = canvas.get_context("2d") {
-        if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
-          set_canvas_el.set(Some(canvas_el));
-          // ctx.set_fill_style_str("white");
-          // ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
-          set_ctx.set(Some(ctx));  
+        if let Ok(Some(ctx)) = canvas.get_context("2d") {
+          if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
+            set_canvas_el.set(Some(canvas_el));
+            ctx.set_fill_style_str("white");
+            ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+            set_ctx.set(Some(ctx));  
+          }
         }
       }
-    }
     }
   });
 
   view! {
   <canvas 
   node_ref=canvas_ref
-  on:mousedown=move |ev| { 
-    set_coordinates.set((ev.x(), ev.y()));
-    set_is_drawing.set(true); 
-
+  on:mousedown=move |ev| { // mouse down -> enable drawing
+    if let Some(el) = canvas_el.get() {
+      let rect = el.get_bounding_client_rect();
+      let x = ev.client_x() as f64 - rect.left();
+      let y = ev.client_y() as f64 - rect.top();
+      set_coordinates.set((x as i32, y as i32));
+      set_is_drawing.set(true);
+    }
   }
 
+  on:mousemove=move |ev| { // mouse move -> start drawing
+    if let Some(el) = canvas_el.get() {
+      let rect = el.get_bounding_client_rect();
+      let x = ev.client_x() as f64 - rect.left();
+      let y = ev.client_y() as f64 - rect.top();
 
-  on:mousemove=move |ev| {
-    if let Some(context) = ctx.get() {
-      if let Some(el) = canvas_el.get() {
-        let rect = el.get_bounding_client_rect();
-        let x = ev.client_x() as f64 - rect.left();
-        let y = ev.client_y() as f64 - rect.top();
-
+      if let Some(context) = ctx.get() { // Stored context
         if is_drawing.get() == true {
           context.begin_path();
-
           context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
           context.set_line_width(4.0);
-
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
           context.line_to(x as f64, y as f64);
-
           context.stroke();
         }
-
         set_coordinates.set((x as i32, y as i32));
       }
 
     }
   }
 
-  on:mouseup=move |ev| { 
+  on:mouseup=move |ev| { // mouse up -> stop drawing 
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
       if let Some(el) = canvas_el.get() {
@@ -76,7 +75,7 @@ fn App() -> impl IntoView {
         let y_css = ev.client_y() as f64 - rect.top();
 
         let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
-        let mut image_data = &image.unwrap().data();
+        let image_data = image.unwrap().data();
         log!("Image data length: {}", image_data.len());  // Should be 1,000,000
 
         let mut greyscale: Vec<f32> = Vec::new();
