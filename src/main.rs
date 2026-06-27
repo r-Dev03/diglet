@@ -1,7 +1,7 @@
 mod model;
 use js_sys::wasm_bindgen::JsCast;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
-use leptos::html::Canvas;
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement,};
+use leptos::html::{Canvas, HtmlElement};
 use leptos::{prelude::*, svg::view, html};
 use candle_core::{Device, Tensor, DType, Result, display};
 use leptos::logging::log;
@@ -13,18 +13,22 @@ use leptos::prelude::*;
 fn App() -> impl IntoView {
   let canvas_ref: NodeRef<Canvas> = NodeRef::new();
   let (ctx, set_ctx) = signal(None);
+  let (canvas_el, set_canvas_el) = signal(None);
   let (is_drawing, set_is_drawing) = signal(false);
   let (coordinates, set_coordinates) = signal((0, 0));
 
   Effect::new(move |_| {
     if let Some(canvas) = canvas_ref.get() {
+      if let Ok(canvas_el) = canvas.clone().dyn_into::<web_sys::HtmlElement>() {
       if let Ok(Some(ctx)) = canvas.get_context("2d") {
         if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
+          set_canvas_el.set(Some(canvas_el));
           ctx.set_fill_style_str("white");
           ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
           set_ctx.set(Some(ctx));  
         }
       }
+    }
     }
   });
 
@@ -37,28 +41,55 @@ fn App() -> impl IntoView {
 
   }
 
+
+  on:mousemove=move |ev| {
+    if let Some(context) = ctx.get() {
+      if let Some(el) = canvas_el.get() {
+        let rect = el.get_bounding_client_rect();
+        let x = ev.client_x() as f64 - rect.left();
+        let y = ev.client_y() as f64 - rect.top();
+
+        if is_drawing.get() == true {
+          context.begin_path();
+
+          context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
+          context.set_line_width(4.0);
+
+          context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
+          context.line_to(x as f64, y as f64);
+
+          context.stroke();
+        }
+
+        set_coordinates.set((x as i32, y as i32));
+      }
+
+    }
+  }
+
   on:mouseup=move |ev| { 
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
-      let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
-      let mut greyscale: Vec<f32> = Vec::new();
-      let mut image_data = &image.unwrap().data();
+      if let Some(el) = canvas_el.get() {
+        let rect = el.get_bounding_client_rect();
+        let x_css = ev.client_x() as f64 - rect.left();
+        let y_css = ev.client_y() as f64 - rect.top();
 
-      let (chunks, _rest) = image_data.as_chunks::<4>();
-      for (i, &[r, g, b, a]) in chunks.iter().take(10).enumerate() {
-        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
-        log!("pixel {} => r={}, g={}, b={}, a={}, grey={}", i, r, g, b, a, grey);
-}
+        let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
+        let mut image_data = &image.unwrap().data();
+        log!("Image data length: {}", image_data.len());  // Should be 1,000,000
 
-      // let (chunks, _rest) = image_data.as_chunks::<4>();
-      // log!("{:?}", chunks);
-      //
-      // for &[r, g, b, a] in chunks {
-      //   let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
-      //   let normalized = (grey / 255.0);
-      //   greyscale.push(normalized);
-      // }
-      // log!("{:?}", greyscale);
+        let mut greyscale: Vec<f32> = Vec::new();
+        let (chunks, _rest) = image_data.as_chunks::<4>();
+
+        log!("First chunk: {:?}", chunks[0]);  // Should be [255, 255, 255, 255]
+
+        for &[r, g, b, a] in chunks {
+          let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+          let normalized = (grey / 255.0);
+          greyscale.push(normalized);
+        }
+      }
       //
       //
       //
@@ -69,38 +100,17 @@ fn App() -> impl IntoView {
       //   greyscale.push(grey);
       // }
       // for (i, v) in image_data.iter().enumerate().step_by(4) {
-        // Gray=(R×0.299)+(G×0.587)+(B×0.114)
-        // let grey = image_data[i] as f64 * 0.299 + image_data[i+1] as f64 * 0.587 + image_data[i+2] as f64 * 0.114;
-        // greyscale.push(grey);
+      // Gray=(R×0.299)+(G×0.587)+(B×0.114)
+      // let grey = image_data[i] as f64 * 0.299 + image_data[i+1] as f64 * 0.587 + image_data[i+2] as f64 * 0.114;
+      // greyscale.push(grey);
       // }
     }
-  }
-
-  on:mousemove=move |ev| {
-    if let Some(context) = ctx.get() {
-
-      if is_drawing.get() == true {
-        context.begin_path();
-
-        context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
-        context.set_line_width(4.0);
-
-        context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
-        context.line_to(ev.x() as f64, ev.y() as f64);
-
-        context.stroke();
-      }
-
-      set_coordinates.set((ev.x(), ev.y()));
-    }
-
   }
 
     width="500"
       height="500"
       style="border: 1px solid black;"
-      class="container"
-    />
+      />
       <button
       on:click=move |ev| {
         if let Some(context) = ctx.get() {
