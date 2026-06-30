@@ -13,7 +13,6 @@ use leptos::prelude::*;
 fn App() -> impl IntoView {
   let canvas_ref: NodeRef<Canvas> = NodeRef::new();
   let (ctx, set_ctx) = signal(None);
-  let (canvas_el, set_canvas_el) = signal(None);
   let (is_drawing, set_is_drawing) = signal(false);
   let (coordinates, set_coordinates) = signal((0, 0));
 
@@ -22,9 +21,19 @@ fn App() -> impl IntoView {
       if let Ok(canvas_el) = canvas.clone().dyn_into::<web_sys::HtmlElement>() {
         if let Ok(Some(ctx)) = canvas.get_context("2d") {
           if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
-            set_canvas_el.set(Some(canvas_el));
+
+            let window = web_sys::window().unwrap();
+            let dpr = window.device_pixel_ratio(); 
+            let display_size = 500.0; 
+
+            // set physical canvas internal resolution size 
+            canvas.set_width((display_size * dpr) as u32);
+            canvas.set_height((display_size * dpr) as u32);
+
+            // scale drawing context so standard layout coords map perfectly to high-res pixels
+            ctx.scale(dpr, dpr).unwrap();
             ctx.set_fill_style_str("white");
-            ctx.fill_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+            ctx.fill_rect(0.0, 0.0, display_size, display_size);
             set_ctx.set(Some(ctx));  
           }
         }
@@ -36,8 +45,8 @@ fn App() -> impl IntoView {
   <canvas 
   node_ref=canvas_ref
   on:mousedown=move |ev| { // mouse down -> enable drawing
-    if let Some(el) = canvas_el.get() {
-      let rect = el.get_bounding_client_rect();
+    if let Some(canvas) = canvas_ref.get() {
+      let rect = canvas.get_bounding_client_rect();
       let x = ev.client_x() as f64 - rect.left();
       let y = ev.client_y() as f64 - rect.top();
       set_coordinates.set((x as i32, y as i32));
@@ -46,12 +55,12 @@ fn App() -> impl IntoView {
   }
 
   on:mousemove=move |ev| { // mouse move -> start drawing
-    if let Some(el) = canvas_el.get() {
-      let rect = el.get_bounding_client_rect();
+    if let Some(canvas) = canvas_ref.get() {
+      let rect = canvas.get_bounding_client_rect();
       let x = ev.client_x() as f64 - rect.left();
       let y = ev.client_y() as f64 - rect.top();
 
-      if let Some(context) = ctx.get() { // Stored context
+      if let Some(context) = ctx.get() { 
         if is_drawing.get() == true {
           context.begin_path();
           context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
@@ -60,6 +69,7 @@ fn App() -> impl IntoView {
           context.line_to(x as f64, y as f64);
           context.stroke();
         }
+
         set_coordinates.set((x as i32, y as i32));
       }
 
@@ -69,45 +79,51 @@ fn App() -> impl IntoView {
   on:mouseup=move |ev| { // mouse up -> stop drawing 
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
-      if let Some(el) = canvas_el.get() {
-        let rect = el.get_bounding_client_rect();
-        let x_css = ev.client_x() as f64 - rect.left();
-        let y_css = ev.client_y() as f64 - rect.top();
+      let window = web_sys::window().unwrap();
+      let dpr = window.device_pixel_ratio();
 
-        let image = context.get_image_data(0.0, 0.0, 500.0, 500.0);
-        let image_data = image.unwrap().data();
-        log!("Image data length: {}", image_data.len());  // Should be 1,000,000
+      let display_size = 500.0;
+      let scaled_size = display_size * dpr;
 
-        let mut greyscale: Vec<f32> = Vec::new();
-        let (chunks, _rest) = image_data.as_chunks::<4>();
+      let image = context.get_image_data(0.0, 0.0, scaled_size, scaled_size);
+      let image_data = image.unwrap().data();
 
-        log!("First chunk: {:?}", chunks[0]);  // Should be [255, 255, 255, 255]
+      let mut greyscale: Vec<f32> = Vec::new();
+      let (chunks, _rest) = image_data.as_chunks::<4>();
 
-        for &[r, g, b, a] in chunks {
-          let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
-          let normalized = (grey / 255.0);
-          greyscale.push(normalized);
-        }
+      for &[r, g, b, a] in chunks {
+        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+        let normalized = (grey / 255.0);
+        greyscale.push(normalized);
       }
+
+      // debugging
+      log!("total extracted pixels: {}", greyscale.len()); 
+
+      if let Some(&first_pixel) = greyscale.first() {
+        log!("top-left pixel value (should be white/1.0): {}", first_pixel);
+      }
+
+      let black_pixel_count = greyscale.iter().filter(|&&val| val < 0.5).count();
+      log!("number of dark pixels drawn: {}", black_pixel_count);
 
     }
+
   }
 
-    width="500"
-      height="500"
-      style="border: 1px solid black;"
+    style="border: 1px solid black; width: 500px; height: 500px;"
       />
-      <button
-      on:click=move |ev| {
+
+      <button on:click=move |_ev| {
         if let Some(context) = ctx.get() {
           context.clear_rect(0.0, 0.0, 500.0, 500.0);
+          context.set_fill_style_str("white");
+          context.fill_rect(0.0, 0.0, 500.0, 500.0);
           set_coordinates.set((0, 0));
         } 
-      }
-      >
-      <span class="button_top"> Clear Canvas </span>
+      }>
+      <span class="button_top">"Clear Canvas"</span>
     </button>
-
   }
 }
 
