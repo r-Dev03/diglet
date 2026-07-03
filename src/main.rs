@@ -18,24 +18,22 @@ fn App() -> impl IntoView {
 
   Effect::new(move |_| {
     if let Some(canvas) = canvas_ref.get() {
-      if let Ok(canvas_el) = canvas.clone().dyn_into::<web_sys::HtmlElement>() {
-        if let Ok(Some(ctx)) = canvas.get_context("2d") {
-          if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
+      if let Ok(Some(ctx)) = canvas.get_context("2d") {
+        if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
 
-            let window = web_sys::window().unwrap();
-            let dpr = window.device_pixel_ratio(); 
-            let display_size = 500.0; 
+          let window = web_sys::window().unwrap();
+          let dpr = window.device_pixel_ratio(); 
+          let display_size = 500.0; 
 
-            // set physical canvas internal resolution size 
-            canvas.set_width((display_size * dpr) as u32);
-            canvas.set_height((display_size * dpr) as u32);
+          // set physical canvas internal resolution size 
+          canvas.set_width((display_size * dpr) as u32);
+          canvas.set_height((display_size * dpr) as u32);
 
-            // scale drawing context so standard layout coords map perfectly to high-res pixels
-            ctx.scale(dpr, dpr).unwrap();
-            ctx.set_fill_style_str("white");
-            ctx.fill_rect(0.0, 0.0, display_size, display_size);
-            set_ctx.set(Some(ctx));  
-          }
+          // scale drawing context so standard layout coords map perfectly to high-res pixels
+          ctx.scale(dpr, dpr).unwrap();
+          ctx.set_fill_style_str("white");
+          ctx.fill_rect(0.0, 0.0, display_size, display_size);
+          set_ctx.set(Some(ctx));  
         }
       }
     }
@@ -76,14 +74,17 @@ fn App() -> impl IntoView {
     }
   }
 
-  on:mouseup=move |ev| { // mouse up -> stop drawing 
+  on:mouseup=move |ev| { // mouse up -> stop drawing & and retrieve data
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
       let window = web_sys::window().unwrap();
       let dpr = window.device_pixel_ratio();
+      log!("{:?}", dpr);
 
       let display_size = 500.0;
       let scaled_size = display_size * dpr;
+      log!("{:?}", scaled_size);
+
 
       let image = context.get_image_data(0.0, 0.0, scaled_size, scaled_size);
       let image_data = image.unwrap().data();
@@ -99,6 +100,8 @@ fn App() -> impl IntoView {
 
       // debugging
       log!("total extracted pixels: {}", greyscale.len()); 
+      log!("total pixel array {:?}", greyscale); 
+
 
       if let Some(&first_pixel) = greyscale.first() {
         log!("top-left pixel value (should be white/1.0): {}", first_pixel);
