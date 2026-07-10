@@ -32,7 +32,7 @@ fn App() -> impl IntoView {
 
           // scale drawing context so standard layout coords map perfectly to high-res pixels
           ctx.scale(dpr, dpr).unwrap();
-          ctx.set_fill_style_str("white");
+          ctx.set_fill_style_str("black");
           ctx.fill_rect(0.0, 0.0, display_size, display_size);
           set_ctx.set(Some(ctx));  
         }
@@ -62,7 +62,7 @@ fn App() -> impl IntoView {
       if let Some(context) = ctx.get() { 
         if is_drawing.get() == true {
           context.begin_path();
-          context.set_stroke_style(&wasm_bindgen::JsValue::from_str("black"));
+          context.set_stroke_style(&wasm_bindgen::JsValue::from_str("white"));
           context.set_line_width(4.0);
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
           context.line_to(x as f64, y as f64);
@@ -95,7 +95,8 @@ fn App() -> impl IntoView {
       for &[r, g, b, a] in chunks {
         let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
         let normalized = (grey / 255.0);
-        greyscale.push(normalized);
+        let inverted = 1.0 - normalized;
+        greyscale.push(inverted);
       }
 
       match draw(greyscale) {
@@ -113,7 +114,7 @@ fn App() -> impl IntoView {
       <button on:click=move |_ev| {
         if let Some(context) = ctx.get() {
           context.clear_rect(0.0, 0.0, 500.0, 500.0);
-          context.set_fill_style_str("white");
+          context.set_fill_style_str("black");
           context.fill_rect(0.0, 0.0, 500.0, 500.0);
           set_coordinates.set((0, 0));
         } 
@@ -131,7 +132,8 @@ fn main() {
 
 
 fn draw(data: Vec<f32>) -> Result<usize, String> {
-  let weights = model::load_weights("/model/weights.safetensors")
+  let bytes = include_bytes!("../public/weights.safetensors");
+  let weights = model::load_weights(bytes)
     .map_err(|e| format!("failed to load weights: {e}"))?;
   let device = &Device::Cpu;
   let input_4d = Tensor::from_vec(data, (1, 1, 500, 500), device)
@@ -140,6 +142,7 @@ fn draw(data: Vec<f32>) -> Result<usize, String> {
   let input = resized_4d.flatten_all().unwrap().reshape((1,784)).map_err(|e| e.to_string())?;
   let output = model::model_forward(&weights, &input).map_err(|e| e.to_string())?;
   let values = output.to_vec2::<f32>().map_err(|e| e.to_string())?;
+  log!("{:?}", values);
   let (digit, _prob) = values[0]
     .iter()
     .enumerate()

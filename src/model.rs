@@ -9,9 +9,9 @@ pub struct ModelWeights {
   pub b2: Tensor,
 }
 
-pub fn load_weights(path: &str) -> Result<ModelWeights, Box<dyn Error>> {
+pub fn load_weights(bytes: &[u8]) -> Result<ModelWeights, Box<dyn Error>> {
   let device = Device::Cpu;
-  let mut tensors = safetensors::load(path, &device)?;
+  let mut tensors = safetensors::load_buffer(bytes, &device)?;
 
   let w1 = tensors.remove("w1").ok_or("w1 not found")?;
   let b1 = tensors.remove("b1").ok_or("b1 not found")?;
