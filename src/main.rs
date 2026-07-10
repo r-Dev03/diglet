@@ -93,9 +93,9 @@ fn App() -> impl IntoView {
 
 
       for &[r, g, b, a] in chunks {
-        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
         let normalized = (grey / 255.0);
-        let inverted = 1.0 - normalized;
+        let inverted = 1.0 - normalized; // white strokes on black canvas-> invert data
         greyscale.push(inverted);
       }
 
@@ -148,5 +148,6 @@ fn draw(data: Vec<f32>) -> Result<usize, String> {
     .enumerate()
     .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
     .ok_or("empty output vector")?;
+  log!("{:?}", digit);
   Ok(digit)
 }

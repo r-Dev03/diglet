@@ -18,6 +18,12 @@ pub fn load_weights(bytes: &[u8]) -> Result<ModelWeights, Box<dyn Error>> {
   let w2 = tensors.remove("w2").ok_or("w2 not found")?;
   let b2 = tensors.remove("b2").ok_or("b2 not found")?;
 
+
+  leptos::logging::log!("{:?}", w1);
+  leptos::logging::log!("{:?}", b1);
+  leptos::logging::log!("{:?}", w2);
+  leptos::logging::log!("{:?}", b2);
+
   let weights = ModelWeights { w1, b1, w2, b2 };
 
   Ok(weights)
