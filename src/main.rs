@@ -95,7 +95,7 @@ fn App() -> impl IntoView {
       for &[r, g, b, a] in chunks {
         let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
         let normalized = (grey / 255.0);
-        let inverted = 1.0 - normalized; // white strokes on black canvas-> invert data
+        let inverted = 1.0 - normalized; // white strokes on black canvas -> invert data
         greyscale.push(inverted);
       }
 
@@ -125,12 +125,6 @@ fn App() -> impl IntoView {
   }
 }
 
-fn main() {
-  mount_to_body(App);
-}
-
-
-
 fn draw(data: Vec<f32>) -> Result<usize, String> {
   let bytes = include_bytes!("../public/weights.safetensors");
   let weights = model::load_weights(bytes)
@@ -151,3 +145,11 @@ fn draw(data: Vec<f32>) -> Result<usize, String> {
   log!("{:?}", digit);
   Ok(digit)
 }
+
+
+fn main() {
+  mount_to_body(App);
+}
+
+
+
