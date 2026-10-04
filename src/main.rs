@@ -95,8 +95,7 @@ fn App() -> impl IntoView {
       for &[r, g, b, a] in chunks {
         let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
         let normalized = (grey / 255.0);
-        let inverted = 1.0 - normalized; // white strokes on black canvas -> invert data
-        greyscale.push(inverted);
+        greyscale.push(normalized); // Resolve polarity bug
       }
 
       match draw(greyscale) {
@@ -133,6 +132,23 @@ fn draw(data: Vec<f32>) -> Result<usize, String> {
   let input_4d = Tensor::from_vec(data, (1, 1, 500, 500), device)
     .map_err(|e| e.to_string())?;
   let resized_4d = input_4d.interpolate2d(28, 28).map_err(|e| e.to_string())?;
+
+  let flat: Vec<f32> = resized_4d.flatten_all().map_err(|e| e.to_string())?
+    .to_vec1::<f32>().map_err(|e| e.to_string())?;
+
+  let mean = flat.iter().sum::<f32>() / flat.len() as f32;
+  let (min, max) = flat.iter()
+    .fold((f32::MAX, f32::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
+  log!("input stats: min={min:.2} max={max:.2} mean={mean:.2}");
+
+  // ASCII view of the 28x28 input: '#' = high value, '.' = low value
+  let art: String = flat.chunks(28)
+    .map(|row| row.iter()
+      .map(|&x| if x > 0.5 { '#' } else if x > 0.2 { '+' } else { '.' })
+      .collect::<String>() + "\n")
+    .collect();
+  log!("{}", art);
+
   let input = resized_4d.flatten_all().unwrap().reshape((1,784)).map_err(|e| e.to_string())?;
   let output = model::model_forward(&weights, &input).map_err(|e| e.to_string())?;
   let values = output.to_vec2::<f32>().map_err(|e| e.to_string())?;
