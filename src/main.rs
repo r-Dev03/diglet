@@ -1,5 +1,6 @@
 mod model;
 use js_sys::wasm_bindgen::JsCast;
+use leptos::attr::Download;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement,};
 use leptos::html::{Canvas, HtmlElement};
 use leptos::{prelude::*, svg::view, html};
@@ -63,7 +64,10 @@ fn App() -> impl IntoView {
         if is_drawing.get() == true {
           context.begin_path();
           context.set_stroke_style(&wasm_bindgen::JsValue::from_str("white"));
-          context.set_line_width(4.0);
+          context.set_line_width(36.0);
+          context.set_line_cap("round");
+          context.set_line_join("round");
+          // context.set_line_width(4.0);
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
           context.line_to(x as f64, y as f64);
           context.stroke();
@@ -78,31 +82,29 @@ fn App() -> impl IntoView {
   on:mouseup=move |ev| { // mouse up -> stop drawing & and retrieve data
     set_is_drawing.set(false); 
     if let Some(context) = ctx.get() {
-      let window = web_sys::window().unwrap();
-      let dpr = window.device_pixel_ratio();
-
-      let display_size = 500.0;
-      let scaled_size = display_size * dpr;
+      if let Some(canvas) = canvas_ref.get() {
+        let width = canvas.width();
 
 
-      let image = context.get_image_data(0.0, 0.0, scaled_size, scaled_size);
-      let image_data = image.unwrap().data();
+        let image = context.get_image_data(0.0, 0.0, width as f64, width as f64);
+        let image_data = image.unwrap().data();
 
-      let mut greyscale: Vec<f32> = Vec::new();
-      let (chunks, _rest) = image_data.as_chunks::<4>();
+        let mut greyscale: Vec<f32> = Vec::new();
+        let (chunks, _rest) = image_data.as_chunks::<4>();
 
 
-      for &[r, g, b, a] in chunks {
-        let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
-        let normalized = (grey / 255.0);
-        greyscale.push(normalized); // Resolve polarity bug
+        for &[r, g, b, a] in chunks {
+          let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
+          let normalized = (grey / 255.0);
+          greyscale.push(normalized); // Resolve polarity bug
+        }
+
+        match draw(greyscale, width as usize) {
+          Ok(digit) => set_prediction.set(digit.to_string()),
+          Err(e) => log!("inference failed: {e}")
+        }
+
       }
-
-      match draw(greyscale) {
-        Ok(digit) => set_prediction.set(digit.to_string()),
-        Err(e) => log!("inference failed: {e}")
-      }
-
     }
 
   }
@@ -124,32 +126,67 @@ fn App() -> impl IntoView {
   }
 }
 
-fn draw(data: Vec<f32>) -> Result<usize, String> {
+fn downsample(data: &[f32], src: usize, dst: usize) -> Vec<f32> {
+  let mut out = vec![0.0f32; dst * dst];
+  // index = oy * dst + ox
+  for oy in 0..dst {
+
+    let y0 = oy * src / dst;
+    let y1   = (oy + 1) * src / dst;
+
+    for ox in 0..dst {
+
+      let x0 = ox * src / dst;
+      let x1   = (ox + 1) * src / dst;
+
+      let idx = oy * dst + ox;
+      let mut total:f32 = 0.0;
+
+
+      for y in y0..y1 {          
+        for x in x0..x1 {      
+          let src_idx = y * src + x;
+          total += data[src_idx];
+          
+        }
+      }
+
+      let count = ((y1 - y0) * (x1 - x0)) as f32;
+      let avg = total/&count;
+      out[idx] = avg;
+
+    }
+
+  }
+  out
+}
+
+fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
+
+  if data.len() != size * size {
+    return Err(format!(
+      "expected {} values for a {size}x{size} canvas, got {}",
+      size * size,
+      data.len()
+    ));
+  }
+
   let bytes = include_bytes!("../public/weights.safetensors");
   let weights = model::load_weights(bytes)
     .map_err(|e| format!("failed to load weights: {e}"))?;
+
   let device = &Device::Cpu;
-  let input_4d = Tensor::from_vec(data, (1, 1, 500, 500), device)
-    .map_err(|e| e.to_string())?;
-  let resized_4d = input_4d.interpolate2d(28, 28).map_err(|e| e.to_string())?;
-
-  let flat: Vec<f32> = resized_4d.flatten_all().map_err(|e| e.to_string())?
-    .to_vec1::<f32>().map_err(|e| e.to_string())?;
-
-  let mean = flat.iter().sum::<f32>() / flat.len() as f32;
-  let (min, max) = flat.iter()
-    .fold((f32::MAX, f32::MIN), |(lo, hi), &x| (lo.min(x), hi.max(x)));
-  log!("input stats: min={min:.2} max={max:.2} mean={mean:.2}");
+  let small = downsample(&data, size, 28);
 
   // ASCII view of the 28x28 input: '#' = high value, '.' = low value
-  let art: String = flat.chunks(28)
+  let art: String = small.chunks(28)
     .map(|row| row.iter()
       .map(|&x| if x > 0.5 { '#' } else if x > 0.2 { '+' } else { '.' })
       .collect::<String>() + "\n")
     .collect();
   log!("{}", art);
 
-  let input = resized_4d.flatten_all().unwrap().reshape((1,784)).map_err(|e| e.to_string())?;
+  let input = Tensor::from_vec(small, (1, 784), device).map_err(|e| e.to_string())?;
   let output = model::model_forward(&weights, &input).map_err(|e| e.to_string())?;
   let values = output.to_vec2::<f32>().map_err(|e| e.to_string())?;
   log!("{:?}", values);
