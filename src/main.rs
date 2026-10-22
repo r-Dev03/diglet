@@ -1,5 +1,10 @@
 mod model;
+use std::cmp::max_by_key;
+use std::usize;
+use::std::cmp;
+
 use js_sys::wasm_bindgen::JsCast;
+use js_sys::Math;
 use leptos::attr::Download;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement,};
 use leptos::html::{Canvas, HtmlElement};
@@ -161,6 +166,7 @@ fn downsample(data: &[f32], src: usize, dst: usize) -> Vec<f32> {
   out
 }
 
+
 fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
 
   if data.len() != size * size {
@@ -197,6 +203,34 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
     .ok_or("empty output vector")?;
   log!("{:?}", digit);
   Ok(digit)
+}
+
+
+fn bounding_box(data: &[f32], size: usize) -> Option<(usize, usize, usize, usize)> {
+  const INK_THRESHOLD: f32 = 0.1;
+
+  let mut x_min = usize::MAX;
+  let mut y_min = usize::MAX;
+  let mut x_max = 0;
+  let mut y_max = 0;
+
+  for y in 0..size {
+    for x in 0..size {
+
+      if data[y * size + x]  > INK_THRESHOLD {
+        x_min = x_min.min(x);
+        y_min = y_min.min(y);
+        x_max = x_max.max(x);
+        y_max = y_max.max(y);
+      }
+
+    }
+  }
+
+  if x_min > x_max {
+    return None;
+  }
+  Some((x_min, y_min, x_max, y_max))
 }
 
 
