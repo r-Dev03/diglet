@@ -233,6 +233,36 @@ fn bounding_box(data: &[f32], size: usize) -> Option<(usize, usize, usize, usize
   Some((x_min, y_min, x_max, y_max))
 }
 
+fn crop_square(data: &[f32], size: usize, bbox: (usize, usize, usize, usize), min_side: usize,) -> (Vec<f32>, usize) {
+  let (x_min, y_min, x_max, y_max) = bbox;
+
+  let width = (x_max - x_min) + 1;
+  let height = (y_max - y_min) + 1;
+
+  let side = width.max(height).max(min_side);
+
+  let start_x = x_min as isize - ((side - width) / 2) as isize;
+  let start_y = y_min as isize - ((side - height) / 2) as isize;
+
+  let mut square = vec![0.0f32; side * side];
+
+
+  for sy in 0..side {
+    for sx in 0..side {
+      let canvas_column = start_x + sx as isize;
+      let canvas_row = start_y + sy as isize;
+
+      if canvas_column >= 0 && canvas_column < size as isize{
+        if canvas_row >= 0 && canvas_row < size as isize {
+          square[sy * side + sx] =  data[canvas_row as usize * size + canvas_column as usize];
+        }
+      }
+
+    }
+  }
+  (square, side)
+}
+
 
 fn main() {
   mount_to_body(App);
