@@ -263,6 +263,54 @@ fn crop_square(data: &[f32], size: usize, bbox: (usize, usize, usize, usize), mi
   (square, side)
 }
 
+fn center_by_mass(small: &[f32], small_size: usize, out_size: usize) -> Vec<f32> {
+  let mut total_mass = 0.0;
+  let mut sum_x = 0.0;
+  let mut sum_y = 0.0;
+
+  for y in 0..small_size {
+    for x in 0..small_size {
+      let brightness = small[y * small_size + x];
+      total_mass += brightness;
+      sum_x += (brightness * x as f32);
+      sum_y += (brightness * y as f32);
+    }
+  }
+
+  let center_x = sum_x / total_mass; 
+  let center_y = sum_y / total_mass;
+
+  let target_center = (out_size - 1) as f32 / 2.0;
+  let max_offset = (out_size - small_size) as i32;
+  let offset_x = ((target_center - center_x).round() as i32).clamp(0, max_offset);
+  let offset_y = ((target_center - center_y).round() as i32).clamp(0, max_offset);
+
+
+let mut image = vec![0.0f32; out_size * out_size];
+
+for y in 0..small_size {
+  for x in 0..small_size {
+    let row = y + offset_y as usize; 
+    let column = x + offset_x as usize;
+    image[row * out_size + column] = small[y * small_size + x];
+  }
+}
+
+image
+}
+
+fn preprocess(data: &[f32], size: usize) -> Option<Vec<f32>> {
+const DIGIT_SIZE: usize = 20;
+const IMAGE_SIZE: usize = 28;
+let bbox = bounding_box(data, size)?; 
+let (square, side) = crop_square(data, size, bbox, DIGIT_SIZE);
+let ds_image = downsample(&square, side, DIGIT_SIZE);
+let centered_image = center_by_mass(&ds_image, DIGIT_SIZE, IMAGE_SIZE);
+
+Some(centered_image)
+} 
+
+
 
 fn main() {
   mount_to_body(App);
