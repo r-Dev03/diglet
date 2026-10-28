@@ -1,4 +1,3 @@
-use ::std::collections;
 use ::std::error::Error;
 use candle_core::{Device, Tensor, safetensors};
 

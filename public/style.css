@@ -78,8 +78,8 @@ body {
 
 .canvas {
   display: block;          
-  width: 500px;            
-  height: 500px;
+  width: min(500px, 90vw); 
+  height: min(500px, 90vw); 
   cursor: crosshair;
   touch-action: none;      
 }
@@ -102,7 +102,7 @@ body {
   font-size: 1.6rem;
 }
 
-/* ===== Button: from Uiverse.io by Voxybuns, recolored ===== */
+/* ===== Button: from Uiverse.io by Voxybuns ===== */
 button {
   /* Variables */
   --button_radius: 0.75em;

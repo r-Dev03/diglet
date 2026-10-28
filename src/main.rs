@@ -21,7 +21,7 @@ fn App() -> impl IntoView {
         if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
           let window = web_sys::window().unwrap();
           let dpr = window.device_pixel_ratio();
-          let display_size = 500.0;
+          let display_size = canvas.get_bounding_client_rect().width();
 
           // set physical canvas internal resolution size
           canvas.set_width((display_size * dpr) as u32);
@@ -40,11 +40,12 @@ fn App() -> impl IntoView {
   view! {
   <main class="app">
   <h1 class="logo">"D"<span class="logo-i">"ı"</span>"g"<span class="logo-one">"1"</span>"et"</h1>
-  <div class="canvas-frame"> 
-  <canvas
+  <div class="canvas-frame">
+  <canvas class="canvas"
   node_ref=canvas_ref
-  on:mousedown=move |ev| { // mouse down -> enable drawing
+  on:pointerdown=move |ev| { // pointer down -> enable drawing
     if let Some(canvas) = canvas_ref.get() {
+      let _ = canvas.set_pointer_capture(ev.pointer_id());
       let rect = canvas.get_bounding_client_rect();
       let x = ev.client_x() as f64 - rect.left();
       let y = ev.client_y() as f64 - rect.top();
@@ -53,7 +54,7 @@ fn App() -> impl IntoView {
     }
   }
 
-  on:mousemove=move |ev| { // mouse move -> start drawing
+  on:pointermove=move |ev| { // pointer move -> start drawing
     if let Some(canvas) = canvas_ref.get() {
       let rect = canvas.get_bounding_client_rect();
       let x = ev.client_x() as f64 - rect.left();
@@ -63,7 +64,7 @@ fn App() -> impl IntoView {
         if is_drawing.get() {
           context.begin_path();
           context.set_stroke_style(&wasm_bindgen::JsValue::from_str("white"));
-          context.set_line_width(36.0);
+          context.set_line_width(rect.width() * 0.072);
           context.set_line_cap("round");
           context.set_line_join("round");
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
@@ -77,7 +78,7 @@ fn App() -> impl IntoView {
     }
   }
 
-  on:mouseup=move |_ev| { // mouse up -> stop drawing & and retrieve data
+  on:pointerup=move |_ev| { // pointer up -> stop drawing & and retrieve data
     set_is_drawing.set(false);
     if let Some(context) = ctx.get() {
       if let Some(canvas) = canvas_ref.get() {
@@ -106,24 +107,23 @@ fn App() -> impl IntoView {
     }
 
   }
-
-    style="border: 1px solid black; width: 500px; height: 500px;"
       />
     </div>
 
       <div class="controls">
       <button on:click=move |_ev| {
-        if let Some(context) = ctx.get() {
-          context.clear_rect(0.0, 0.0, 500.0, 500.0);
+        if let (Some(context), Some(canvas)) = (ctx.get(), canvas_ref.get()) {
+          let size = canvas.get_bounding_client_rect().width();
+          context.clear_rect(0.0, 0.0, size, size);
           context.set_fill_style_str("black");
-          context.fill_rect(0.0, 0.0, 500.0, 500.0);
+          context.fill_rect(0.0, 0.0, size, size);
           set_coordinates.set((0, 0));
           set_prediction.set("".to_string());
         }
       }>
       <span class="button_top">"Clear Canvas"</span>
       </button>
-      <span class="prediction">"Prediction: " {move || prediction.get()}</span>
+      <span class="prediction">"Prediction: "<span class="prediction-digit">{move || prediction.get()}</span></span>
       </div>
       </main>
   }
