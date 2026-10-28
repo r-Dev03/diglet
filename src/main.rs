@@ -1,6 +1,5 @@
 mod model;
 mod preprocess;
-
 use candle_core::{Device, Tensor};
 use js_sys::wasm_bindgen::JsCast;
 use leptos::html::Canvas;
@@ -39,6 +38,9 @@ fn App() -> impl IntoView {
   });
 
   view! {
+  <main class="app">
+  <h1 class="logo">"D"<span class="logo-i">"ı"</span>"g"<span class="logo-one">"1"</span>"et"</h1>
+  <div class="canvas-frame"> 
   <canvas
   node_ref=canvas_ref
   on:mousedown=move |ev| { // mouse down -> enable drawing
@@ -107,18 +109,23 @@ fn App() -> impl IntoView {
 
     style="border: 1px solid black; width: 500px; height: 500px;"
       />
+    </div>
 
+      <div class="controls">
       <button on:click=move |_ev| {
         if let Some(context) = ctx.get() {
           context.clear_rect(0.0, 0.0, 500.0, 500.0);
           context.set_fill_style_str("black");
           context.fill_rect(0.0, 0.0, 500.0, 500.0);
           set_coordinates.set((0, 0));
+          set_prediction.set("".to_string());
         }
       }>
       <span class="button_top">"Clear Canvas"</span>
       </button>
-      <span>"Prediction: " {move || prediction.get()}</span>
+      <span class="prediction">"Prediction: " {move || prediction.get()}</span>
+      </div>
+      </main>
   }
 }
 

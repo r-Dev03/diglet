@@ -1,4 +1,4 @@
-/// Turns a raw canvas into a 28x28 MNIST-style input, or None if nothing is drawn.
+/// turns a raw canvas into a 28x28 MNIST-style input, or None if nothing is drawn.
 pub fn preprocess(canvas: &[f32], canvas_size: usize) -> Option<Vec<f32>> {
   const DIGIT_SIZE: usize = 20; // MNIST digits fit in a 20x20 box
   const IMAGE_SIZE: usize = 28; // centered inside a 28x28 image
@@ -11,8 +11,7 @@ pub fn preprocess(canvas: &[f32], canvas_size: usize) -> Option<Vec<f32>> {
   Some(image)
 }
 
-/// Finds the smallest rectangle containing all ink on the canvas.
-/// Returns (col_min, row_min, col_max, row_max), inclusive, or None if the canvas is blank.
+/// smallest box that contains the digit, returning the edges as a tuple, or None if the canvas is blank
 fn bounding_box(canvas: &[f32], canvas_size: usize) -> Option<(usize, usize, usize, usize)> {
   const INK_THRESHOLD: f32 = 0.1;
 
@@ -39,8 +38,7 @@ fn bounding_box(canvas: &[f32], canvas_size: usize) -> Option<(usize, usize, usi
   Some((col_min, row_min, col_max, row_max))
 }
 
-/// Cuts a square region around the bounding box out of the canvas, with the digit centered.
-/// Returns the square's pixels and its side length.
+/// cuts a square around the bounding box, with the box centered inside it
 fn crop_square(
   canvas: &[f32],
   canvas_size: usize,
@@ -52,11 +50,11 @@ fn crop_square(
   let box_width = col_max - col_min + 1;
   let box_height = row_max - row_min + 1;
 
-  // Fit the longer side, but never smaller than min_size.
+  // use the longer side, but never smaller than min_size
   let square_size = box_width.max(box_height).max(min_size);
 
-  // Top-left corner of the square on the canvas, shifted so the digit is centered.
-  // Signed, because near the canvas edge it can be negative.
+  // move the top-left corner back by half the leftover space, so the digit ends up centered
+  // signed, because near the canvas edge it can be negative
   let start_col = col_min as isize - ((square_size - box_width) / 2) as isize;
   let start_row = row_min as isize - ((square_size - box_height) / 2) as isize;
 
@@ -72,7 +70,7 @@ fn crop_square(
         && canvas_row < canvas_size as isize
         && canvas_col < canvas_size as isize;
 
-      // Off-canvas positions stay 0.0 (background).
+      // if it's off the canvas, it doesn't exist (0.0)
       if on_canvas {
         square[square_row * square_size + square_col] =
           canvas[canvas_row as usize * canvas_size + canvas_col as usize];
@@ -83,17 +81,17 @@ fn crop_square(
   (square, square_size)
 }
 
-/// Shrinks a square image to dst_size x dst_size by averaging each block of pixels.
+/// shrinks the square to dst_size x dst_size by averaging each block of pixels
 fn downsample(src: &[f32], src_size: usize, dst_size: usize) -> Vec<f32> {
   let mut dst = vec![0.0f32; dst_size * dst_size];
 
   for dst_row in 0..dst_size {
-    // Which source rows this output row covers (end is exclusive).
+    // which source rows this output row covers (end is exclusive)
     let row_start = dst_row * src_size / dst_size;
     let row_end = (dst_row + 1) * src_size / dst_size;
 
     for dst_col in 0..dst_size {
-      // Which source columns this output column covers.
+      // which source columns this output column covers
       let col_start = dst_col * src_size / dst_size;
       let col_end = (dst_col + 1) * src_size / dst_size;
 
@@ -112,9 +110,9 @@ fn downsample(src: &[f32], src_size: usize, dst_size: usize) -> Vec<f32> {
   dst
 }
 
-/// Places the digit into a blank image so its center of mass lands at the center, like MNIST.
+/// places the digit into a blank 28x28 image so its center of mass lands at the center, like MNIST
 fn center_by_mass(digit: &[f32], digit_size: usize, image_size: usize) -> Vec<f32> {
-  // Center of mass: brightness-weighted average row and column.
+  // center of mass: brightness-weighted average row and column.
   let mut total_mass: f32 = 0.0;
   let mut weighted_col_sum: f32 = 0.0;
   let mut weighted_row_sum: f32 = 0.0;
@@ -131,7 +129,7 @@ fn center_by_mass(digit: &[f32], digit_size: usize, image_size: usize) -> Vec<f3
   let mass_col = weighted_col_sum / total_mass;
   let mass_row = weighted_row_sum / total_mass;
 
-  // Shift so the center of mass lands on the image center, kept inside the frame.
+  // shift so the center of mass lands on the image center, kept inside the frame.
   let image_center = (image_size - 1) as f32 / 2.0;
   let max_offset = (image_size - digit_size) as i32;
   let offset_col = ((image_center - mass_col).round() as i32).clamp(0, max_offset) as usize;
