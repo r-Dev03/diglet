@@ -1,19 +1,12 @@
 mod model;
-use std::cmp::max_by_key;
-use std::usize;
-use::std::cmp;
+mod preprocess;
 
+use candle_core::{Device, Tensor};
 use js_sys::wasm_bindgen::JsCast;
-use js_sys::Math;
-use leptos::attr::Download;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement,};
-use leptos::html::{Canvas, HtmlElement};
-use leptos::{prelude::*, svg::view, html};
-use candle_core::{Device, Tensor, DType, Result as CandleResult, Shape};
+use leptos::html::Canvas;
 use leptos::logging::log;
 use leptos::prelude::*;
-
-
+use web_sys::CanvasRenderingContext2d;
 
 #[component]
 fn App() -> impl IntoView {
@@ -27,12 +20,11 @@ fn App() -> impl IntoView {
     if let Some(canvas) = canvas_ref.get() {
       if let Ok(Some(ctx)) = canvas.get_context("2d") {
         if let Ok(ctx) = ctx.dyn_into::<CanvasRenderingContext2d>() {
-
           let window = web_sys::window().unwrap();
-          let dpr = window.device_pixel_ratio(); 
-          let display_size = 500.0; 
+          let dpr = window.device_pixel_ratio();
+          let display_size = 500.0;
 
-          // set physical canvas internal resolution size 
+          // set physical canvas internal resolution size
           canvas.set_width((display_size * dpr) as u32);
           canvas.set_height((display_size * dpr) as u32);
 
@@ -40,14 +32,14 @@ fn App() -> impl IntoView {
           ctx.scale(dpr, dpr).unwrap();
           ctx.set_fill_style_str("black");
           ctx.fill_rect(0.0, 0.0, display_size, display_size);
-          set_ctx.set(Some(ctx));  
+          set_ctx.set(Some(ctx));
         }
       }
     }
   });
 
   view! {
-  <canvas 
+  <canvas
   node_ref=canvas_ref
   on:mousedown=move |ev| { // mouse down -> enable drawing
     if let Some(canvas) = canvas_ref.get() {
@@ -65,14 +57,13 @@ fn App() -> impl IntoView {
       let x = ev.client_x() as f64 - rect.left();
       let y = ev.client_y() as f64 - rect.top();
 
-      if let Some(context) = ctx.get() { 
-        if is_drawing.get() == true {
+      if let Some(context) = ctx.get() {
+        if is_drawing.get() {
           context.begin_path();
           context.set_stroke_style(&wasm_bindgen::JsValue::from_str("white"));
           context.set_line_width(36.0);
           context.set_line_cap("round");
           context.set_line_join("round");
-          // context.set_line_width(4.0);
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
           context.line_to(x as f64, y as f64);
           context.stroke();
@@ -84,8 +75,8 @@ fn App() -> impl IntoView {
     }
   }
 
-  on:mouseup=move |ev| { // mouse up -> stop drawing & and retrieve data
-    set_is_drawing.set(false); 
+  on:mouseup=move |_ev| { // mouse up -> stop drawing & and retrieve data
+    set_is_drawing.set(false);
     if let Some(context) = ctx.get() {
       if let Some(canvas) = canvas_ref.get() {
         let width = canvas.width();
@@ -98,10 +89,10 @@ fn App() -> impl IntoView {
         let (chunks, _rest) = image_data.as_chunks::<4>();
 
 
-        for &[r, g, b, a] in chunks {
-          let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114; 
-          let normalized = (grey / 255.0);
-          greyscale.push(normalized); // Resolve polarity bug
+        for &[r, g, b, _a] in chunks {
+          let grey = f32::from(r) * 0.299 + f32::from(g) * 0.587 + f32::from(b) * 0.114;
+          let normalized = grey / 255.0;
+          greyscale.push(normalized);
         }
 
         match draw(greyscale, width as usize) {
@@ -123,7 +114,7 @@ fn App() -> impl IntoView {
           context.set_fill_style_str("black");
           context.fill_rect(0.0, 0.0, 500.0, 500.0);
           set_coordinates.set((0, 0));
-        } 
+        }
       }>
       <span class="button_top">"Clear Canvas"</span>
       </button>
@@ -131,44 +122,7 @@ fn App() -> impl IntoView {
   }
 }
 
-fn downsample(data: &[f32], src: usize, dst: usize) -> Vec<f32> {
-  let mut out = vec![0.0f32; dst * dst];
-  // index = oy * dst + ox
-  for oy in 0..dst {
-
-    let y0 = oy * src / dst;
-    let y1   = (oy + 1) * src / dst;
-
-    for ox in 0..dst {
-
-      let x0 = ox * src / dst;
-      let x1   = (ox + 1) * src / dst;
-
-      let idx = oy * dst + ox;
-      let mut total:f32 = 0.0;
-
-
-      for y in y0..y1 {          
-        for x in x0..x1 {      
-          let src_idx = y * src + x;
-          total += data[src_idx];
-          
-        }
-      }
-
-      let count = ((y1 - y0) * (x1 - x0)) as f32;
-      let avg = total/&count;
-      out[idx] = avg;
-
-    }
-
-  }
-  out
-}
-
-
 fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
-
   if data.len() != size * size {
     return Err(format!(
       "expected {} values for a {size}x{size} canvas, got {}",
@@ -177,18 +131,32 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
     ));
   }
 
-  let bytes = include_bytes!("../public/weights.safetensors");
-  let weights = model::load_weights(bytes)
-    .map_err(|e| format!("failed to load weights: {e}"))?;
+  let Some(small) = preprocess::preprocess(&data, size) else {
+    return Err("nothing drawn yet".to_string());
+  };
 
   let device = &Device::Cpu;
-  let small = downsample(&data, size, 28);
+  let bytes = include_bytes!("../public/weights.safetensors");
+  let weights = model::load_weights(bytes).map_err(|e| format!("failed to load weights: {e}"))?;
 
   // ASCII view of the 28x28 input: '#' = high value, '.' = low value
-  let art: String = small.chunks(28)
-    .map(|row| row.iter()
-      .map(|&x| if x > 0.5 { '#' } else if x > 0.2 { '+' } else { '.' })
-      .collect::<String>() + "\n")
+  let art: String = small
+    .chunks(28)
+    .map(|row| {
+      row
+        .iter()
+        .map(|&x| {
+          if x > 0.5 {
+            '#'
+          } else if x > 0.2 {
+            '+'
+          } else {
+            '.'
+          }
+        })
+        .collect::<String>()
+        + "\n"
+    })
     .collect();
   log!("{}", art);
 
@@ -205,116 +173,6 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
   Ok(digit)
 }
 
-
-fn bounding_box(data: &[f32], size: usize) -> Option<(usize, usize, usize, usize)> {
-  const INK_THRESHOLD: f32 = 0.1;
-
-  let mut x_min = usize::MAX;
-  let mut y_min = usize::MAX;
-  let mut x_max = 0;
-  let mut y_max = 0;
-
-  for y in 0..size {
-    for x in 0..size {
-
-      if data[y * size + x]  > INK_THRESHOLD {
-        x_min = x_min.min(x);
-        y_min = y_min.min(y);
-        x_max = x_max.max(x);
-        y_max = y_max.max(y);
-      }
-
-    }
-  }
-
-  if x_min > x_max {
-    return None;
-  }
-  Some((x_min, y_min, x_max, y_max))
-}
-
-fn crop_square(data: &[f32], size: usize, bbox: (usize, usize, usize, usize), min_side: usize,) -> (Vec<f32>, usize) {
-  let (x_min, y_min, x_max, y_max) = bbox;
-
-  let width = (x_max - x_min) + 1;
-  let height = (y_max - y_min) + 1;
-
-  let side = width.max(height).max(min_side);
-
-  let start_x = x_min as isize - ((side - width) / 2) as isize;
-  let start_y = y_min as isize - ((side - height) / 2) as isize;
-
-  let mut square = vec![0.0f32; side * side];
-
-
-  for sy in 0..side {
-    for sx in 0..side {
-      let canvas_column = start_x + sx as isize;
-      let canvas_row = start_y + sy as isize;
-
-      if canvas_column >= 0 && canvas_column < size as isize{
-        if canvas_row >= 0 && canvas_row < size as isize {
-          square[sy * side + sx] =  data[canvas_row as usize * size + canvas_column as usize];
-        }
-      }
-
-    }
-  }
-  (square, side)
-}
-
-fn center_by_mass(small: &[f32], small_size: usize, out_size: usize) -> Vec<f32> {
-  let mut total_mass = 0.0;
-  let mut sum_x = 0.0;
-  let mut sum_y = 0.0;
-
-  for y in 0..small_size {
-    for x in 0..small_size {
-      let brightness = small[y * small_size + x];
-      total_mass += brightness;
-      sum_x += (brightness * x as f32);
-      sum_y += (brightness * y as f32);
-    }
-  }
-
-  let center_x = sum_x / total_mass; 
-  let center_y = sum_y / total_mass;
-
-  let target_center = (out_size - 1) as f32 / 2.0;
-  let max_offset = (out_size - small_size) as i32;
-  let offset_x = ((target_center - center_x).round() as i32).clamp(0, max_offset);
-  let offset_y = ((target_center - center_y).round() as i32).clamp(0, max_offset);
-
-
-let mut image = vec![0.0f32; out_size * out_size];
-
-for y in 0..small_size {
-  for x in 0..small_size {
-    let row = y + offset_y as usize; 
-    let column = x + offset_x as usize;
-    image[row * out_size + column] = small[y * small_size + x];
-  }
-}
-
-image
-}
-
-fn preprocess(data: &[f32], size: usize) -> Option<Vec<f32>> {
-const DIGIT_SIZE: usize = 20;
-const IMAGE_SIZE: usize = 28;
-let bbox = bounding_box(data, size)?; 
-let (square, side) = crop_square(data, size, bbox, DIGIT_SIZE);
-let ds_image = downsample(&square, side, DIGIT_SIZE);
-let centered_image = center_by_mass(&ds_image, DIGIT_SIZE, IMAGE_SIZE);
-
-Some(centered_image)
-} 
-
-
-
 fn main() {
   mount_to_body(App);
 }
-
-
-

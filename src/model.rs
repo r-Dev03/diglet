@@ -1,5 +1,5 @@
-use::std::error::Error;
-use::std::collections;
+use ::std::collections;
+use ::std::error::Error;
 use candle_core::{Device, Tensor, safetensors};
 
 pub struct ModelWeights {
@@ -18,7 +18,6 @@ pub fn load_weights(bytes: &[u8]) -> Result<ModelWeights, Box<dyn Error>> {
   let w2 = tensors.remove("w2").ok_or("w2 not found")?;
   let b2 = tensors.remove("b2").ok_or("b2 not found")?;
 
-
   leptos::logging::log!("{:?}", w1);
   leptos::logging::log!("{:?}", b1);
   leptos::logging::log!("{:?}", w2);
@@ -29,9 +28,11 @@ pub fn load_weights(bytes: &[u8]) -> Result<ModelWeights, Box<dyn Error>> {
   Ok(weights)
 }
 
-
 pub fn model_forward(weights: &ModelWeights, inputs: &Tensor) -> Result<Tensor, Box<dyn Error>> {
-  let hidden1 = inputs.matmul(&weights.w1)?.broadcast_add(&weights.b1)?.relu()?;
+  let hidden1 = inputs
+    .matmul(&weights.w1)?
+    .broadcast_add(&weights.b1)?
+    .relu()?;
   let hidden2 = hidden1.matmul(&weights.w2)?.broadcast_add(&weights.b2)?;
   let output = candle_nn::ops::softmax(&hidden2, 1)?;
 
