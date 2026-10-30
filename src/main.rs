@@ -63,12 +63,12 @@ fn App() -> impl IntoView {
       if let Some(context) = ctx.get() {
         if is_drawing.get() {
           context.begin_path();
-          context.set_stroke_style(&wasm_bindgen::JsValue::from_str("white"));
+          context.set_stroke_style_str("white");
           context.set_line_width(rect.width() * 0.072);
           context.set_line_cap("round");
           context.set_line_join("round");
           context.move_to(coordinates.get().0 as f64, coordinates.get().1 as f64);
-          context.line_to(x as f64, y as f64);
+          context.line_to(x, y);
           context.stroke();
         }
 
@@ -80,8 +80,7 @@ fn App() -> impl IntoView {
 
   on:pointerup=move |_ev| { // pointer up -> stop drawing & and retrieve data
     set_is_drawing.set(false);
-    if let Some(context) = ctx.get() {
-      if let Some(canvas) = canvas_ref.get() {
+    if let (Some(context), Some(canvas)) = (ctx.get(), canvas_ref.get()) {
         let width = canvas.width();
 
 
@@ -106,7 +105,6 @@ fn App() -> impl IntoView {
       }
     }
 
-  }
       />
     </div>
 
@@ -147,7 +145,7 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
   let weights = model::load_weights(bytes).map_err(|e| format!("failed to load weights: {e}"))?;
 
   // ASCII view of the 28x28 input: '#' = high value, '.' = low value
-  let art: String = small
+  let _art: String = small
     .chunks(28)
     .map(|row| {
       row
@@ -165,12 +163,10 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
         + "\n"
     })
     .collect();
-  log!("{}", art);
 
   let input = Tensor::from_vec(small, (1, 784), device).map_err(|e| e.to_string())?;
   let output = model::model_forward(&weights, &input).map_err(|e| e.to_string())?;
   let values = output.to_vec2::<f32>().map_err(|e| e.to_string())?;
-  log!("{:?}", values);
   let (digit, _prob) = values[0]
     .iter()
     .enumerate()

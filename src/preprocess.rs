@@ -53,7 +53,7 @@ fn crop_square(
   // use the longer side, but never smaller than min_size
   let square_size = box_width.max(box_height).max(min_size);
 
-  // move the top-left corner back by half the leftover space, so the digit ends up centered
+  // move the top-left corner back by half the leftover space, so the box ends up centered
   // signed, because near the canvas edge it can be negative
   let start_col = col_min as isize - ((square_size - box_width) / 2) as isize;
   let start_row = row_min as isize - ((square_size - box_height) / 2) as isize;
