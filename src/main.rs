@@ -104,6 +104,7 @@ fn App() -> impl IntoView {
 
       }
     }
+    on:pointercancel=move |_ev| set_is_drawing.set(false)
 
       />
     </div>
@@ -145,7 +146,7 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
   let weights = model::load_weights(bytes).map_err(|e| format!("failed to load weights: {e}"))?;
 
   // ASCII view of the 28x28 input: '#' = high value, '.' = low value
-  let _art: String = small
+  let art: String = small
     .chunks(28)
     .map(|row| {
       row
@@ -172,7 +173,7 @@ fn draw(data: Vec<f32>, size: usize) -> Result<usize, String> {
     .enumerate()
     .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
     .ok_or("empty output vector")?;
-  log!("{:?}", digit);
+  log!("{}", art);
   Ok(digit)
 }
 
