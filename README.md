@@ -31,8 +31,8 @@ To measure it, I took 300 digits from MNIST's held-out test set (images the mode
 
 | Input to the model | Accuracy |
 |--------------------|----------|
-| Whole canvas shrunk straight to 28×28 | 14% |
-| **After Diglet's preprocessing** | **96%** |
+| Whole canvas shrunk straight to 28×28 | 10% |
+| **After Diglet's preprocessing** | **95%** |
 
 ## How It Works
 
