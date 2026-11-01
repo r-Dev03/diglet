@@ -15,6 +15,7 @@ Draw a digit and Diglet predicts it the moment you lift your pen. The neural net
 
 ## Highlights
 
+- Reaches 96.2% accuracy on MNIST's 10,000 held-out test images
 - Runs a 784 → 32 → 10 neural network in the browser with Candle, with weights embedded via `include_bytes!`
 - Prepares every drawing the way MNIST was prepared: cropped, fit into a 20×20 box, and centered by center of mass in 28×28
 - Shrinks images with area averaging, so thin strokes survive and edges come out gray like MNIST digits
@@ -26,12 +27,12 @@ The model was trained on MNIST, where every digit is the same size and centered.
 
 ![Same drawing with and without preprocessing](docs/before-after.png)
 
-To measure it, I took 300 MNIST digits, shrank them, and placed them in the top-right corner of a 500×500 canvas, the way someone might draw small and off to one side:
+To measure it, I took 300 digits from MNIST's held-out test set (images the model never saw in training), shrank them, and placed them in the top-right corner of a 500×500 canvas, the way someone might draw small and off to one side:
 
 | Input to the model | Accuracy |
 |--------------------|----------|
-| Whole canvas shrunk straight to 28×28 | 9% |
-| **After Diglet's preprocessing** | **94%** |
+| Whole canvas shrunk straight to 28×28 | 14% |
+| **After Diglet's preprocessing** | **96%** |
 
 ## How It Works
 
@@ -102,7 +103,7 @@ flowchart LR
     O --> P["argmax → digit"]
 ```
 
-A two-layer network trained in JAX in a separate project, [MNIST Digit Classifier](https://github.com/r-Dev03/MNIST-Digit-Classifier). Its weights were exported to `public/weights.safetensors` and loaded with Candle's safetensors reader.
+A two-layer network trained in JAX in a separate project, [MNIST Digit Classifier](https://github.com/r-Dev03/MNIST-Digit-Classifier). It trains on MNIST's standard 60,000 images and is evaluated on the 10,000 test images it never sees during training, reaching 96.2% accuracy. Its weights are exported to `public/weights.safetensors` and loaded with Candle's safetensors reader.
 
 ## Project Structure
 
@@ -147,7 +148,6 @@ Rust · Leptos · Candle · WebAssembly · Trunk · Nix
 
 ## Known Limitations
 
-- **No held-out test set yet.** The training script uses all 70,000 MNIST images, so there's no separate test accuracy to report. Next: train on the standard 60,000 and evaluate on the remaining 10,000.
 - **Small model.** A 32-neuron hidden layer is light enough for the browser, but it confuses similar shapes (4 and 9, 7 and 1) more often than a convolutional network would.
 - **Canvas size is set on load.** Rotating a phone or resizing the window after the page loads needs a reload.
 
