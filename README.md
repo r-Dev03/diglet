@@ -7,6 +7,8 @@
 [![Candle](https://img.shields.io/badge/Candle-0.9-yellow.svg)](https://github.com/huggingface/candle)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0.svg)](https://webassembly.org/)
 
+**[Try it live →](https://r-dev03.github.io/diglet/)**
+
 Draw a digit and Diglet predicts it the moment you lift your pen. The neural network runs client-side through [Candle](https://github.com/huggingface/candle), with its weights compiled into the WebAssembly binary, so there's no server and no API call.
 
 ![Diglet's pipeline: canvas, square crop, 20x20, 28x28, prediction](docs/pipeline.png)
